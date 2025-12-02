@@ -110,4 +110,3 @@ var queueStatsScript = redis.NewScript(`
 	
 	return stats
 `)
-

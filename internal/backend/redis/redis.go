@@ -504,4 +504,3 @@ func parseQueueStats(fields []interface{}) queue.Queue {
 
 	return q
 }
-
