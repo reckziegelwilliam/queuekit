@@ -1,0 +1,115 @@
+version: '3'
+
+vars:
+  BINARY_SERVER: queuekitd
+  BINARY_CLI: queuekit
+  CMD_SERVER: ./cmd/queuekitd
+  CMD_CLI: ./cmd/queuekit
+  VERSION:
+    sh: echo "${VERSION:-dev}"
+  COMMIT:
+    sh: git rev-parse --short HEAD 2>/dev/null || echo "unknown"
+  BUILD_TIME:
+    sh: date -u '+%Y-%m-%d_%H:%M:%S'
+
+tasks:
+  default:
+    desc: Build both binaries
+    cmds:
+      - task: build
+
+  build:
+    desc: Build both binaries
+    cmds:
+      - task: build-server
+      - task: build-cli
+
+  build-server:
+    desc: Build queuekitd server binary
+    cmds:
+      - echo "Building {{.BINARY_SERVER}}..."
+      - go build -ldflags "-X main.Version={{.VERSION}} -X main.Commit={{.COMMIT}} -X main.BuildTime={{.BUILD_TIME}}" -o {{.BINARY_SERVER}} {{.CMD_SERVER}}
+    sources:
+      - "**/*.go"
+      - go.mod
+      - go.sum
+    generates:
+      - "{{.BINARY_SERVER}}"
+
+  build-cli:
+    desc: Build queuekit CLI binary
+    cmds:
+      - echo "Building {{.BINARY_CLI}}..."
+      - go build -ldflags "-X main.Version={{.VERSION}} -X main.Commit={{.COMMIT}} -X main.BuildTime={{.BUILD_TIME}}" -o {{.BINARY_CLI}} {{.CMD_CLI}}
+    sources:
+      - "**/*.go"
+      - go.mod
+      - go.sum
+    generates:
+      - "{{.BINARY_CLI}}"
+
+  test:
+    desc: Run tests with race detector
+    cmds:
+      - echo "Running tests..."
+      - go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+
+  test-coverage:
+    desc: Run tests and generate coverage report
+    cmds:
+      - task: test
+      - echo "Generating coverage report..."
+      - go tool cover -html=coverage.txt -o coverage.html
+      - echo "Coverage report generated{{":"}} coverage.html"
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - echo "Running linters..."
+      - golangci-lint run ./...
+
+  fmt:
+    desc: Format code with gofmt and goimports
+    cmds:
+      - echo "Formatting code..."
+      - go fmt ./...
+      - goimports -w .
+
+  tidy:
+    desc: Run go mod tidy
+    cmds:
+      - echo "Tidying go.mod..."
+      - go mod tidy
+
+  clean:
+    desc: Remove build artifacts
+    cmds:
+      - echo "Cleaning..."
+      - rm -f {{.BINARY_SERVER}} {{.BINARY_CLI}}
+      - rm -f coverage.txt coverage.html
+      - rm -rf dist/ bin/
+
+  run-server:
+    desc: Build and run queuekitd
+    deps:
+      - build-server
+    cmds:
+      - echo "Running {{.BINARY_SERVER}}..."
+      - ./{{.BINARY_SERVER}}
+
+  run-cli:
+    desc: Build and run queuekit CLI
+    deps:
+      - build-cli
+    cmds:
+      - echo "Running {{.BINARY_CLI}}..."
+      - ./{{.BINARY_CLI}}
+
+  install-tools:
+    desc: Install development tools
+    cmds:
+      - echo "Installing development tools..."
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - go install golang.org/x/tools/cmd/goimports@latest
+      - echo "Tools installed successfully"
+
