@@ -14,16 +14,16 @@
 - [x] Add `Makefile` / `taskfile` for common commands
 - [x] Set up Go linters and CI (GitHub Actions)
 
-## Phase 1 – Core Domain & Storage
+## Phase 1 – Core Domain & Storage ✅
 
-- [ ] Define job model:
-  - [ ] `Job` (id, type, queue, payload, status, attempts, scheduled_at, etc.)
-  - [ ] `Queue` model and statuses
-- [ ] Implement backend interfaces:
-  - [ ] `Backend` interface (enqueue, reserve, ack, nack, moveToDLQ, listQueues, listJobs)
-  - [ ] Postgres implementation (including migrations)
-  - [ ] Redis implementation (fast queue operations, locks)
-- [ ] Unit tests for backend behavior
+- [x] Define job model:
+  - [x] `Job` (id, type, queue, payload, status, attempts, scheduled_at, etc.)
+  - [x] `Queue` model and statuses
+- [x] Implement backend interfaces:
+  - [x] `Backend` interface (enqueue, reserve, ack, nack, moveToDLQ, listQueues, listJobs)
+  - [x] Postgres implementation (including migrations)
+  - [x] Redis implementation (fast queue operations, locks)
+- [x] Unit tests for backend behavior
 
 ## Phase 2 – Worker Pool & Execution
 
