@@ -277,7 +277,7 @@ func TestPostgresBackend_ListQueues(t *testing.T) {
 		}
 	}
 	require.NotNil(t, emailsQueue)
-	assert.Equal(t, int64(1), emailsQueue.Size)          // 1 pending
+	assert.Equal(t, int64(1), emailsQueue.Size)           // 1 pending
 	assert.Equal(t, int64(1), emailsQueue.CompletedCount) // 1 completed
 }
 
@@ -396,4 +396,3 @@ type testError struct {
 func (e *testError) Error() string {
 	return e.msg
 }
-
