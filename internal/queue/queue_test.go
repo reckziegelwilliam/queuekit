@@ -66,4 +66,3 @@ func TestQueueHealthScore(t *testing.T) {
 		})
 	}
 }
-
