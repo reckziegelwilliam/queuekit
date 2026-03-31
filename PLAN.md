@@ -25,20 +25,21 @@
   - [x] Redis implementation (fast queue operations, locks)
 - [x] Unit tests for backend behavior
 
-## Phase 2 – Worker Pool & Execution
+## Phase 2 – Worker Pool & Execution ✅
 
-- [ ] Implement worker pool:
-  - [ ] Multiple workers per queue
-  - [ ] Graceful shutdown
-  - [ ] Heartbeats / worker status
-- [ ] Implement retry & backoff strategies:
-  - [ ] Fixed backoff
-  - [ ] Exponential backoff
-  - [ ] Max attempts → DLQ
-- [ ] Worker handler registration:
-  - [ ] Map job type → handler func
-  - [ ] Context with job metadata
-- [ ] Basic logging and instrumentation hooks
+- [x] Implement worker pool:
+  - [x] Multiple workers per queue (configurable concurrency per queue)
+  - [x] Graceful shutdown (context cancellation, waits for in-flight jobs)
+  - [x] Worker status snapshots (idle / running / stopped + last job ID)
+- [x] Implement retry & backoff strategies:
+  - [x] Fixed backoff (`FixedBackoff`)
+  - [x] Exponential backoff (`ExponentialBackoff`, capped at MaxDelay)
+  - [x] Max attempts → DLQ (handled in backend `Nack`)
+- [x] Worker handler registration:
+  - [x] Map job type → handler func (`Registry`)
+  - [x] Context with job metadata passed to every handler
+- [x] Basic logging and instrumentation hooks (`log/slog`, per-event structured logs)
+- [x] Fix retry bug: backends now re-schedule non-final failures as `pending` with backoff delay
 
 ## Phase 3 – HTTP API
 

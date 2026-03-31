@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"time"
 
 	"github.com/reckziegelwilliam/queuekit/internal/queue"
 )
@@ -18,9 +19,10 @@ type Backend interface {
 	// Ack marks a job as successfully completed
 	Ack(ctx context.Context, jobID string) error
 
-	// Nack marks a job as failed and increments its attempt count
-	// If the job has exceeded max attempts, it should be moved to DLQ automatically
-	Nack(ctx context.Context, jobID string, err error) error
+	// Nack marks a job as failed, increments its attempt count, and schedules a retry.
+	// retryDelay controls how long before the job becomes eligible for re-processing.
+	// If the job has exceeded max attempts it is moved to the dead-letter queue instead.
+	Nack(ctx context.Context, jobID string, err error, retryDelay time.Duration) error
 
 	// MoveToDLQ moves a job to the dead-letter queue
 	MoveToDLQ(ctx context.Context, jobID string) error

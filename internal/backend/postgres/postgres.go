@@ -152,8 +152,10 @@ func (p *PostgresBackend) Ack(ctx context.Context, jobID string) error {
 	return nil
 }
 
-// Nack marks a job as failed and increments its attempt count
-func (p *PostgresBackend) Nack(ctx context.Context, jobID string, jobErr error) error {
+// Nack marks a job as failed, increments its attempt count, and schedules a retry.
+// If attempts >= max_attempts the job is moved to the dead-letter queue instead.
+// retryDelay controls when the job becomes eligible for re-processing.
+func (p *PostgresBackend) Nack(ctx context.Context, jobID string, jobErr error, retryDelay time.Duration) error {
 	tx, err := p.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -183,20 +185,21 @@ func (p *PostgresBackend) Nack(ctx context.Context, jobID string, jobErr error) 
 	if attempts >= maxAttempts {
 		query := `
 			UPDATE jobs
-			SET status = 'dead', attempts = $1, last_error = $2, 
+			SET status = 'dead', attempts = $1, last_error = $2,
 			    failed_at = $3, updated_at = $3
 			WHERE id = $4
 		`
 		_, err = tx.Exec(ctx, query, attempts, lastError, now, jobID)
 	} else {
-		// Otherwise mark as failed and allow retry
+		// Schedule retry: put back to pending with a future scheduled_at
+		retryAt := now.Add(retryDelay)
 		query := `
 			UPDATE jobs
-			SET status = 'failed', attempts = $1, last_error = $2,
-			    failed_at = $3, updated_at = $3
-			WHERE id = $4
+			SET status = 'pending', attempts = $1, last_error = $2,
+			    failed_at = $3, updated_at = $3, scheduled_at = $4
+			WHERE id = $5
 		`
-		_, err = tx.Exec(ctx, query, attempts, lastError, now, jobID)
+		_, err = tx.Exec(ctx, query, attempts, lastError, now, retryAt, jobID)
 	}
 
 	if err != nil {

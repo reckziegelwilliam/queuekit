@@ -190,18 +190,18 @@ func TestPostgresBackend_Nack(t *testing.T) {
 	require.NoError(t, err)
 
 	testErr := &testError{msg: "processing failed"}
-	err = backend.Nack(ctx, reserved.ID, testErr)
+	err = backend.Nack(ctx, reserved.ID, testErr, 0)
 	require.NoError(t, err)
 
-	// Check job was marked as failed
-	failed, err := backend.GetJob(ctx, reserved.ID)
+	// Job should be rescheduled as pending (retryable, attempts=1, max=2)
+	retrying, err := backend.GetJob(ctx, reserved.ID)
 	require.NoError(t, err)
-	assert.Equal(t, queue.StatusFailed, failed.Status)
-	assert.Equal(t, 1, failed.Attempts)
-	assert.Equal(t, "processing failed", failed.LastError)
+	assert.Equal(t, queue.StatusPending, retrying.Status)
+	assert.Equal(t, 1, retrying.Attempts)
+	assert.Equal(t, "processing failed", retrying.LastError)
 
-	// Nack again - should move to dead letter queue
-	err = backend.Nack(ctx, failed.ID, testErr)
+	// Nack again - should move to dead letter queue (attempts=2 >= max=2)
+	err = backend.Nack(ctx, retrying.ID, testErr, 0)
 	require.NoError(t, err)
 
 	dead, err := backend.GetJob(ctx, failed.ID)

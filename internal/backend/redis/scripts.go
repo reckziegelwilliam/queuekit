@@ -43,11 +43,11 @@ var reserveScript = redis.NewScript(`
 // Lua script to atomically nack a job
 // KEYS[1] = job hash key
 // KEYS[2] = queue name
-// ARGV[1] = current attempts
+// ARGV[1] = current attempts (before increment)
 // ARGV[2] = max_attempts
 // ARGV[3] = last_error
-// ARGV[4] = current timestamp
-// ARGV[5] = scheduled_at (for re-enqueue)
+// ARGV[4] = current timestamp (unix seconds)
+// ARGV[5] = retry_at timestamp (unix seconds, now + retryDelay)
 var nackScript = redis.NewScript(`
 	local job_key = KEYS[1]
 	local queue_name = KEYS[2]
@@ -55,25 +55,25 @@ var nackScript = redis.NewScript(`
 	local max_attempts = tonumber(ARGV[2])
 	local last_error = ARGV[3]
 	local now = ARGV[4]
-	local scheduled_at = tonumber(ARGV[5])
-	
+	local retry_at = tonumber(ARGV[5])
+
 	-- Get job ID
 	local job_id = redis.call('HGET', job_key, 'id')
 	if not job_id then
 		return redis.error_reply('job not found')
 	end
-	
+
 	-- Update attempts and error
-	redis.call('HSET', job_key, 
+	redis.call('HSET', job_key,
 		'attempts', attempts,
 		'last_error', last_error,
 		'failed_at', now,
 		'updated_at', now
 	)
-	
+
 	-- Remove from running set
 	redis.call('SREM', 'status:queue:' .. queue_name .. ':running', job_id)
-	
+
 	-- Check if exceeded max attempts
 	if attempts >= max_attempts then
 		-- Move to dead letter queue
@@ -81,11 +81,11 @@ var nackScript = redis.NewScript(`
 		redis.call('SADD', 'status:queue:' .. queue_name .. ':dead', job_id)
 		return 'dead'
 	else
-		-- Re-enqueue as failed (can be retried)
-		redis.call('HSET', job_key, 'status', 'failed')
-		redis.call('ZADD', 'queue:' .. queue_name, scheduled_at, job_id)
-		redis.call('SADD', 'status:queue:' .. queue_name .. ':failed', job_id)
-		return 'failed'
+		-- Re-schedule as pending with backoff delay so Reserve can pick it up
+		redis.call('HSET', job_key, 'status', 'pending', 'scheduled_at', retry_at)
+		redis.call('ZADD', 'queue:' .. queue_name, retry_at, job_id)
+		redis.call('SADD', 'status:queue:' .. queue_name .. ':pending', job_id)
+		return 'pending'
 	end
 `)
 

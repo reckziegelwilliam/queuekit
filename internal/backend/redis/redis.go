@@ -176,8 +176,10 @@ func (r *RedisBackend) Ack(ctx context.Context, jobID string) error {
 	return nil
 }
 
-// Nack marks a job as failed and increments its attempt count
-func (r *RedisBackend) Nack(ctx context.Context, jobID string, jobErr error) error {
+// Nack marks a job as failed, increments its attempt count, and schedules a retry.
+// If attempts >= max_attempts the job is moved to the dead-letter queue instead.
+// retryDelay controls when the job becomes eligible for re-processing.
+func (r *RedisBackend) Nack(ctx context.Context, jobID string, jobErr error, retryDelay time.Duration) error {
 	// Get current job data
 	jobData, err := r.client.HGetAll(ctx, jobKey(jobID)).Result()
 	if err != nil {
@@ -191,7 +193,6 @@ func (r *RedisBackend) Nack(ctx context.Context, jobID string, jobErr error) err
 	attempts, _ := strconv.Atoi(jobData["attempts"])
 	maxAttempts, _ := strconv.Atoi(jobData["max_attempts"])
 	queueName := jobData["queue"]
-	scheduledAt := jobData["scheduled_at"]
 
 	lastError := ""
 	if jobErr != nil {
@@ -199,6 +200,7 @@ func (r *RedisBackend) Nack(ctx context.Context, jobID string, jobErr error) err
 	}
 
 	now := time.Now().UTC()
+	retryAt := now.Add(retryDelay)
 
 	_, err = nackScript.Run(ctx, r.client,
 		[]string{jobKey(jobID), queueName},
@@ -206,7 +208,7 @@ func (r *RedisBackend) Nack(ctx context.Context, jobID string, jobErr error) err
 		maxAttempts,
 		lastError,
 		now.Unix(),
-		scheduledAt,
+		retryAt.Unix(),
 	).Result()
 
 	if err != nil {
