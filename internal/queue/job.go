@@ -1,3 +1,4 @@
+// Package queue defines the core domain models for jobs and queues.
 package queue
 
 import (

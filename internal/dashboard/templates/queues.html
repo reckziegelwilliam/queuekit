@@ -1,0 +1,35 @@
+{{define "content"}}
+<h2>Queues</h2>
+{{if .Queues}}
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Pending</th>
+      <th>Running</th>
+      <th>Completed</th>
+      <th>Failed</th>
+      <th>Dead</th>
+      <th>Total</th>
+      <th>Health</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .Queues}}
+    <tr>
+      <td><a href="/dashboard/queues/{{.Name}}">{{.Name}}</a></td>
+      <td>{{.Size}}</td>
+      <td>{{.ProcessingCount}}</td>
+      <td>{{.CompletedCount}}</td>
+      <td>{{.FailedCount}}</td>
+      <td>{{.DeadCount}}</td>
+      <td>{{.TotalJobs}}</td>
+      <td><span class="health">{{printf "%.0f" .HealthScore}}%</span></td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{else}}
+<p>No queues found. Enqueue a job to get started.</p>
+{{end}}
+{{end}}

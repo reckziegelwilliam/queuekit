@@ -65,7 +65,7 @@ func NewPool(b backend.Backend, r *Registry, queues []QueueConfig, opts ...PoolO
 }
 
 // Start launches all workers as goroutines. It returns immediately; workers run
-// in the background until Stop is called or the parent context is cancelled.
+// in the background until Stop is called or the parent context is canceled.
 //
 // Start returns an error if the pool is already running.
 func (p *Pool) Start(ctx context.Context) error {

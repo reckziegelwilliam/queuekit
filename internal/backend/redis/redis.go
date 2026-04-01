@@ -1,3 +1,4 @@
+// Package redis implements the Backend interface using Redis.
 package redis
 
 import (
@@ -190,8 +191,14 @@ func (r *RedisBackend) Nack(ctx context.Context, jobID string, jobErr error, ret
 		return fmt.Errorf("job not found: %s", jobID)
 	}
 
-	attempts, _ := strconv.Atoi(jobData["attempts"])
-	maxAttempts, _ := strconv.Atoi(jobData["max_attempts"])
+	attempts, err := strconv.Atoi(jobData["attempts"])
+	if err != nil {
+		return fmt.Errorf("invalid attempts value: %w", err)
+	}
+	maxAttempts, err := strconv.Atoi(jobData["max_attempts"])
+	if err != nil {
+		return fmt.Errorf("invalid max_attempts value: %w", err)
+	}
 	queueName := jobData["queue"]
 
 	lastError := ""
@@ -290,27 +297,29 @@ func (r *RedisBackend) ListQueues(ctx context.Context) ([]queue.Queue, error) {
 func (r *RedisBackend) ListJobs(ctx context.Context, queueName, status string, limit, offset int) ([]*queue.Job, error) {
 	var jobIDs []string
 
-	if status != "" {
+	switch {
+	case status != "":
 		// Get job IDs from status set
 		members, err := r.client.SMembers(ctx, statusKey(queueName, status)).Result()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get job IDs from status set: %w", err)
 		}
 		jobIDs = members
-	} else if queueName != "" {
+	case queueName != "":
 		// Get job IDs from queue sorted set
 		members, err := r.client.ZRange(ctx, queueKey(queueName), 0, -1).Result()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get job IDs from queue: %w", err)
 		}
 		jobIDs = members
-	} else {
+	default:
 		// Get all job keys
 		keys, err := r.client.Keys(ctx, "job:*").Result()
 		if err != nil {
 			return nil, fmt.Errorf("failed to list job keys: %w", err)
 		}
 		// Extract job IDs from keys
+		jobIDs = make([]string, 0, len(keys))
 		for _, key := range keys {
 			jobIDs = append(jobIDs, key[4:]) // Remove "job:" prefix
 		}

@@ -200,15 +200,15 @@ func TestRegistry_Overwrite(t *testing.T) {
 // Worker tests
 // ---------------------------------------------------------------------------
 
-func newTestJob(jobType, queueName string) *queue.Job {
-	return queue.NewJob(jobType, queueName, json.RawMessage(`{"test":true}`))
+func newTestJob(jobType string) *queue.Job {
+	return queue.NewJob(jobType, "default", json.RawMessage(`{"test":true}`))
 }
 
 func TestWorker_SuccessfulJob(t *testing.T) {
 	b := newMockBackend()
 	r := NewRegistry()
 
-	job := newTestJob("email.send", "default")
+	job := newTestJob("email.send")
 	require.NoError(t, b.Enqueue(context.Background(), job))
 
 	executed := make(chan string, 1)
@@ -246,7 +246,7 @@ func TestWorker_FailedJobNacked(t *testing.T) {
 	b := newMockBackend()
 	r := NewRegistry()
 
-	job := newTestJob("risky.task", "default")
+	job := newTestJob("risky.task")
 	job.MaxAttempts = 3
 	require.NoError(t, b.Enqueue(context.Background(), job))
 
@@ -277,7 +277,7 @@ func TestWorker_NoHandlerNacks(t *testing.T) {
 	b := newMockBackend()
 	r := NewRegistry() // no handlers registered
 
-	job := newTestJob("unknown.type", "default")
+	job := newTestJob("unknown.type")
 	require.NoError(t, b.Enqueue(context.Background(), job))
 
 	w := NewWorker("w1", "default", b, r,
@@ -308,7 +308,7 @@ func TestWorker_StateTransitions(t *testing.T) {
 		return nil
 	})
 
-	job := newTestJob("blocking.job", "default")
+	job := newTestJob("blocking.job")
 	require.NoError(t, b.Enqueue(context.Background(), job))
 
 	w := NewWorker("w1", "default", b, r,
@@ -393,7 +393,7 @@ func TestPool_ProcessesJobs(t *testing.T) {
 	})
 
 	for i := 0; i < numJobs; i++ {
-		job := newTestJob("test.job", "default")
+		job := newTestJob("test.job")
 		require.NoError(t, b.Enqueue(context.Background(), job))
 	}
 

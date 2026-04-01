@@ -100,7 +100,7 @@ func (w *Worker) State() WorkerState {
 	}
 }
 
-// Run starts the worker's polling loop. It blocks until ctx is cancelled.
+// Run starts the worker's polling loop. It blocks until ctx is canceled.
 func (w *Worker) Run(ctx context.Context) {
 	w.setState(StatusIdle, "")
 	w.logger.Info("worker started", "worker_id", w.id, "queue", w.queueName)

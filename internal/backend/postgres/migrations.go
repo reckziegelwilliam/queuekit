@@ -38,7 +38,7 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 	if err != nil {
 		return fmt.Errorf("failed to create migrator: %w", err)
 	}
-	defer m.Close()
+	defer m.Close() //nolint:errcheck // best-effort cleanup
 
 	// Run migrations
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {

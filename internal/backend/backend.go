@@ -1,3 +1,4 @@
+// Package backend defines the storage interface for job queue backends.
 package backend
 
 import (

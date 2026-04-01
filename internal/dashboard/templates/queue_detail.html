@@ -1,0 +1,54 @@
+{{define "content"}}
+<h2>Queue: {{.QueueName}}</h2>
+
+<div class="tabs">
+  <a href="/dashboard/queues/{{.QueueName}}" {{if eq .Status ""}}class="active"{{end}}>All</a>
+  <a href="/dashboard/queues/{{.QueueName}}?status=pending" {{if eq .Status "pending"}}class="active"{{end}}>Pending</a>
+  <a href="/dashboard/queues/{{.QueueName}}?status=running" {{if eq .Status "running"}}class="active"{{end}}>Running</a>
+  <a href="/dashboard/queues/{{.QueueName}}?status=completed" {{if eq .Status "completed"}}class="active"{{end}}>Completed</a>
+  <a href="/dashboard/queues/{{.QueueName}}?status=failed" {{if eq .Status "failed"}}class="active"{{end}}>Failed</a>
+  <a href="/dashboard/queues/{{.QueueName}}?status=dead" {{if eq .Status "dead"}}class="active"{{end}}>Dead</a>
+</div>
+
+{{if .Jobs}}
+<table>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Type</th>
+      <th>Status</th>
+      <th>Attempts</th>
+      <th>Created</th>
+      <th>Error</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .Jobs}}
+    <tr>
+      <td><a href="/dashboard/jobs/{{.ID}}">{{slice .ID 0 8}}…</a></td>
+      <td>{{.Type}}</td>
+      <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
+      <td>{{.Attempts}}/{{.MaxAttempts}}</td>
+      <td>{{.CreatedAt.Format "2006-01-02 15:04:05"}}</td>
+      <td>{{if .LastError}}{{.LastError}}{{else}}—{{end}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+
+<div class="pagination">
+  {{if gt .Offset 0}}
+    <a href="/dashboard/queues/{{.QueueName}}?status={{.Status}}&offset={{.PrevOffset}}&limit={{.Limit}}">← Prev</a>
+  {{else}}
+    <span>← Prev</span>
+  {{end}}
+  {{if .HasNext}}
+    <a href="/dashboard/queues/{{.QueueName}}?status={{.Status}}&offset={{.NextOffset}}&limit={{.Limit}}">Next →</a>
+  {{else}}
+    <span>Next →</span>
+  {{end}}
+</div>
+{{else}}
+<p>No jobs found.</p>
+{{end}}
+{{end}}

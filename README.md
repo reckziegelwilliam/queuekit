@@ -1,219 +1,256 @@
-1️⃣ QueueKit (Go Job Queue & Scheduler)
-README.md
 # QueueKit
 
-> A minimal, self-hosted job queue and scheduler written in Go.  
+> A minimal, self-hosted job queue and scheduler written in Go.
 > Think Sidekiq/BullMQ, but "boring Go" with HTML templates and Postgres/Redis under the hood.
 
-QueueKit is a background job system for services that need retries, backoff, idempotency, and scheduled work
-without dragging in a huge stack or JS-heavy dashboards.
+QueueKit is a background job system for services that need retries, backoff, and scheduled work without dragging in a huge stack or JS-heavy dashboards.
 
-- 🧵 **Concurrency-first**: built with Go's goroutines and channels.
-- 📬 **Job queues + scheduled jobs**: fire-and-forget work and cron-style recurring jobs.
-- 🔁 **Retries & backoff**: configurable strategies, dead-letter queue.
-- 🗃️ **Postgres / Redis**: pluggable backend for durability and speed.
-- 📊 **Tiny dashboard**: Go `html/template` + minimal CSS, no SPA.
-- 🛠️ **CLI tooling**: `queuekit` for enqueueing, inspecting, and managing jobs.
+- **Concurrency-first**: built with Go's goroutines and channels.
+- **Job queues + scheduled jobs**: fire-and-forget work and cron-style recurring jobs.
+- **Retries & backoff**: configurable fixed/exponential strategies, dead-letter queue.
+- **Postgres / Redis**: pluggable backend for durability and speed.
+- **Dashboard**: Go `html/template` + minimal CSS, no SPA.
+- **CLI tooling**: `queuekit` for enqueueing, inspecting, and managing jobs.
+
+---
+
+## Quick Start
+
+### With Docker Compose
+
+```bash
+docker compose up --build
+```
+
+This starts Postgres, Redis, and the `queuekitd` server on port 8080.
+
+- **API**: http://localhost:8080/v1/queues
+- **Dashboard**: http://localhost:8080/dashboard
+
+### Without Docker
+
+```bash
+# Prerequisites: Postgres and Redis running locally
+
+export QUEUEKIT_BACKEND=postgres
+export QUEUEKIT_POSTGRES_DSN="postgres://user:pass@localhost:5432/queuekit?sslmode=disable"
+export QUEUEKIT_API_KEY="your-secret-key"
+
+go run ./cmd/queuekitd
+```
+
+---
+
+## API Reference
+
+All `/v1/*` endpoints require an `Authorization: Bearer <API_KEY>` header.
+
+| Method   | Path                          | Description              |
+|----------|-------------------------------|--------------------------|
+| `POST`   | `/v1/jobs`                    | Enqueue a new job        |
+| `GET`    | `/v1/jobs/{id}`               | Get job details          |
+| `DELETE` | `/v1/jobs/{id}`               | Delete a job             |
+| `POST`   | `/v1/jobs/{id}/retry`         | Retry a failed/dead job  |
+| `POST`   | `/v1/jobs/{id}/cancel`        | Cancel a pending job     |
+| `GET`    | `/v1/queues`                  | List all queues          |
+| `GET`    | `/v1/queues/{name}/jobs`      | List jobs in a queue     |
+
+### Enqueue a Job
+
+```bash
+curl -X POST http://localhost:8080/v1/jobs \
+  -H "Authorization: Bearer your-secret-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "send_email",
+    "queue": "emails",
+    "payload": {"to": "user@example.com", "subject": "Hello"},
+    "priority": 20,
+    "max_attempts": 5
+  }'
+```
+
+### List Queues
+
+```bash
+curl http://localhost:8080/v1/queues \
+  -H "Authorization: Bearer your-secret-key"
+```
+
+### List Jobs (with filtering)
+
+```bash
+curl "http://localhost:8080/v1/queues/emails/jobs?status=pending&limit=10" \
+  -H "Authorization: Bearer your-secret-key"
+```
+
+---
+
+## Dashboard
+
+The dashboard is available at `/dashboard` and provides:
+
+- **Queues overview**: pending, running, completed, failed, and dead counts with health scores
+- **Queue detail**: filterable job list with status tabs and pagination
+- **Job detail**: full payload view, error details, and retry button
+
+---
+
+## CLI
+
+```bash
+go install ./cmd/queuekit
+
+# Or use the built binary
+./queuekit --help
+```
+
+### Configuration
+
+Create `~/.config/queuekit/config.yaml`:
+
+```yaml
+server: http://localhost:8080
+api_key: your-secret-key
+```
+
+Or pass flags directly:
+
+```bash
+queuekit --server http://localhost:8080 --api-key your-secret-key inspect queues
+```
+
+### Commands
+
+```bash
+# Enqueue a job
+queuekit enqueue send_email --queue emails --payload '{"to":"user@example.com"}'
+
+# Inspect queues
+queuekit inspect queues
+
+# Inspect jobs in a queue
+queuekit inspect jobs --queue emails --status pending --limit 20
+
+# Retry a failed job
+queuekit retry <job-id>
+
+# Cancel a pending job
+queuekit cancel <job-id>
+```
+
+---
+
+## Using as a Library
+
+### Register handlers and run workers
+
+```go
+package main
+
+import (
+    "context"
+    "encoding/json"
+    "fmt"
+    "log/slog"
+
+    "github.com/reckziegelwilliam/queuekit/internal/backend/postgres"
+    "github.com/reckziegelwilliam/queuekit/internal/queue"
+    "github.com/reckziegelwilliam/queuekit/internal/worker"
+)
+
+func main() {
+    ctx := context.Background()
+    be, _ := postgres.NewFromDSN(ctx, "postgres://...")
+    defer be.Close()
+
+    registry := worker.NewRegistry()
+    registry.Register("send_email", func(ctx context.Context, job *queue.Job) error {
+        fmt.Println("Sending email for job", job.ID)
+        return nil
+    })
+
+    // Enqueue a job
+    job := queue.NewJob("send_email", "emails", json.RawMessage(`{"to":"user@example.com"}`))
+    be.Enqueue(ctx, job)
+
+    // Start workers
+    pool := worker.NewPool(be, registry, []worker.QueueConfig{
+        {Name: "emails", Concurrency: 4},
+    }, worker.WithPoolLogger(slog.Default()))
+
+    pool.Start(ctx)
+    // ... wait for shutdown signal ...
+    pool.Stop()
+}
+```
+
+See [`examples/simple/`](examples/simple/) and [`examples/cron/`](examples/cron/) for complete working examples.
 
 ---
 
 ## Architecture
 
-High-level components:
+```
+┌──────────┐     ┌────────────────────────────────────────┐
+│ queuekit │────▶│              queuekitd                 │
+│   (CLI)  │HTTP │  ┌──────────┐  ┌──────────────────┐   │
+└──────────┘     │  │ HTTP API │  │    Dashboard      │   │
+                 │  │  /v1/*   │  │   /dashboard/*    │   │
+                 │  └────┬─────┘  └────────┬──────────┘   │
+                 │       │                 │              │
+                 │       ▼                 ▼              │
+                 │  ┌──────────────────────────────┐      │
+                 │  │       backend.Backend         │      │
+                 │  ├──────────────┬───────────────┤      │
+                 │  │   Postgres   │     Redis     │      │
+                 │  └──────────────┴───────────────┘      │
+                 │       │                                │
+                 │       ▼                                │
+                 │  ┌──────────────────┐                  │
+                 │  │   Worker Pool    │                  │
+                 │  │  (goroutines)    │                  │
+                 │  └──────────────────┘                  │
+                 └────────────────────────────────────────┘
+```
 
-- **API server (`queuekitd`)**
-  - HTTP API to enqueue jobs, inspect queues, and manage schedules.
-  - Exposes Prometheus metrics (optional).
-- **Worker pool**
-  - Runs inside the same process or separate worker processes.
-  - Pulls jobs from backend, executes registered handlers.
-- **Backend**
-  - **Postgres**: durable job storage, job history, DLQ.
-  - **Redis**: fast queue/lock operations.
-- **Dashboard**
-  - Simple HTML views for queues, workers, failures, schedules.
+---
 
-```text
-Client → HTTP API → Backend (Postgres/Redis) → Workers → Dashboard
+## Configuration
 
-Tech Stack
+`queuekitd` is configured via environment variables:
 
-Language: Go (1.22+)
+| Variable               | Default        | Description                      |
+|------------------------|----------------|----------------------------------|
+| `QUEUEKIT_LISTEN_ADDR` | `:8080`        | HTTP listen address              |
+| `QUEUEKIT_API_KEY`     |                | API key for `/v1/*` auth         |
+| `QUEUEKIT_BACKEND`     | `postgres`     | Backend type: `postgres`/`redis` |
+| `QUEUEKIT_POSTGRES_DSN`|                | Postgres connection string       |
+| `QUEUEKIT_REDIS_ADDR`  | `localhost:6379`| Redis address                   |
 
-Backend: Postgres + Redis
+---
 
-HTTP: net/http + chi/echo/gorilla (TBD)
+## Development
 
-Templates: html/template
+```bash
+# Run tests
+make test
 
-CLI: cobra or stdlib flag
+# Run linter
+make lint
 
-Quickstart (planned UX)
-# run server + workers
-queuekitd serve --config ./queuekit.yaml
+# Build binaries
+make build
 
-# enqueue a job from CLI
-queuekit enqueue email.send \
-  --payload '{"to":"user@example.com","subject":"Hi"}' \
-  --queue critical
+# Run server locally
+make run
+```
 
-# inspect queues
-queuekit inspect queues
-queuekit inspect jobs --queue critical
+---
 
+## Project Status
 
-Then open the dashboard:
+This is a portfolio / learning project showcasing production-ready Go patterns:
+concurrency, reliability, and observability, with minimalist but usable dashboards.
 
-http://localhost:8080
-
-Job Definition (example)
-
-In your Go service:
-
-import "github.com/yourname/queuekit/client"
-
-func main() {
-    c := client.New("http://localhost:8080", client.WithAPIKey("secret"))
-
-    _ = c.Enqueue(context.Background(), client.Job{
-        Queue: "emails",
-        Type:  "email.send",
-        Payload: map[string]any{
-            "to":      "user@example.com",
-            "subject": "Welcome",
-        },
-    })
-}
-
-
-Worker registration:
-
-import "github.com/yourname/queuekit/worker"
-
-func main() {
-    w := worker.New(worker.Config{ /* ... */ })
-
-    w.Handle("email.send", func(ctx context.Context, job worker.Job) error {
-        // send email here
-        return nil
-    })
-
-    w.Run()
-}
-
-Status
-
-This is a portfolio / learning project intended to showcase:
-
-Production-ready Go code organization.
-
-Concurrency, reliability, and observability patterns.
-
-Minimalist but usable dashboards without any frontend frameworks.
-
-Not yet production hardened. Use at your own risk.
-
-Roadmap (high level)
-
- Core job model and storage
-
- Redis + Postgres backends
-
- Worker pool with backoff & DLQ
-
- HTTP API + auth
-
- HTML dashboard
-
- CLI (queuekit / queuekitd)
-
- Docker & example deployment
-
-
-### `PLAN.md`
-
-```md
-# QueueKit – Implementation Plan
-
-## Phase 0 – Repo & Skeleton
-
-- [ ] Initialize Go module: `github.com/<you>/queuekit`
-- [ ] Create basic structure:
-  - [ ] `cmd/queuekitd` – server/worker binary
-  - [ ] `cmd/queuekit` – CLI tool
-  - [ ] `internal/queue` – core domain types
-  - [ ] `internal/backend` – Postgres/Redis adapters
-  - [ ] `internal/worker` – worker pool
-  - [ ] `internal/httpapi` – HTTP handlers
-  - [ ] `internal/dashboard` – templates and handlers
-- [ ] Add `Makefile` / `taskfile` for common commands
-- [ ] Set up Go linters and CI (GitHub Actions)
-
-## Phase 1 – Core Domain & Storage
-
-- [ ] Define job model:
-  - [ ] `Job` (id, type, queue, payload, status, attempts, scheduled_at, etc.)
-  - [ ] `Queue` model and statuses
-- [ ] Implement backend interfaces:
-  - [ ] `Backend` interface (enqueue, reserve, ack, nack, moveToDLQ, listQueues, listJobs)
-  - [ ] Postgres implementation (including migrations)
-  - [ ] Redis implementation (fast queue operations, locks)
-- [ ] Unit tests for backend behavior
-
-## Phase 2 – Worker Pool & Execution
-
-- [ ] Implement worker pool:
-  - [ ] Multiple workers per queue
-  - [ ] Graceful shutdown
-  - [ ] Heartbeats / worker status
-- [ ] Implement retry & backoff strategies:
-  - [ ] Fixed backoff
-  - [ ] Exponential backoff
-  - [ ] Max attempts → DLQ
-- [ ] Worker handler registration:
-  - [ ] Map job type → handler func
-  - [ ] Context with job metadata
-- [ ] Basic logging and instrumentation hooks
-
-## Phase 3 – HTTP API
-
-- [ ] Choose router (chi/echo)
-- [ ] Implement endpoints:
-  - [ ] `POST /v1/jobs` – enqueue
-  - [ ] `GET /v1/queues` – list queues
-  - [ ] `GET /v1/queues/{name}/jobs` – list jobs
-  - [ ] `POST /v1/jobs/{id}/retry`
-  - [ ] `POST /v1/jobs/{id}/cancel`
-- [ ] API key authentication
-- [ ] JSON schema & validation
-- [ ] Integration tests against Postgres/Redis backends
-
-## Phase 4 – Dashboard
-
-- [ ] Setup `html/template` with basic layout
-- [ ] Views:
-  - [ ] Queues overview (throughput, latency, failures)
-  - [ ] Queue details (jobs, statuses, pagination)
-  - [ ] Job details panel (payload, error, retry)
-  - [ ] Schedules view
-- [ ] Minimal CSS (no framework)
-- [ ] Server-side sorting/filtering (no SPA)
-
-## Phase 5 – CLI (`queuekit`)
-
-- [ ] Set up CLI using `cobra` or stdlib `flag`
-- [ ] Commands:
-  - [ ] `queuekit enqueue <type> --queue <name> --payload <json>`
-  - [ ] `queuekit inspect queues`
-  - [ ] `queuekit inspect jobs --queue <name>`
-  - [ ] `queuekit retry <job-id>`
-- [ ] Global config via YAML (`~/.config/queuekit/config.yaml`)
-
-## Phase 6 – Packaging & Examples
-
-- [ ] Dockerfile for `queuekitd`
-- [ ] `docker-compose.yml` with Postgres + Redis
-- [ ] Example integrations:
-  - [ ] Simple Go service using the client
-  - [ ] Cron-style recurring jobs
-- [ ] Final README polish and screenshots
+See [PLAN.md](PLAN.md) for the full implementation roadmap.

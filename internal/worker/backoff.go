@@ -1,3 +1,4 @@
+// Package worker implements the worker pool, job execution, and retry strategies.
 package worker
 
 import (

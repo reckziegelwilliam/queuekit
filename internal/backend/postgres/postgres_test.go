@@ -204,7 +204,7 @@ func TestPostgresBackend_Nack(t *testing.T) {
 	err = backend.Nack(ctx, retrying.ID, testErr, 0)
 	require.NoError(t, err)
 
-	dead, err := backend.GetJob(ctx, failed.ID)
+	dead, err := backend.GetJob(ctx, retrying.ID)
 	require.NoError(t, err)
 	assert.Equal(t, queue.StatusDead, dead.Status)
 	assert.Equal(t, 2, dead.Attempts)
