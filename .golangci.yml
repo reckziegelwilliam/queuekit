@@ -11,8 +11,9 @@ linters-settings:
     check-blank: true
 
   govet:
-    check-shadowing: true
     enable-all: true
+    disable:
+      - fieldalignment
 
   gofmt:
     simplify: true
@@ -92,7 +93,7 @@ linters:
     - funlen        # Too noisy for early development
     - gocognit      # Similar to gocyclo, redundant
     - godox         # Allow TODO/FIXME comments
-    - gomnd         # Magic number detection - too strict for initial dev
+    - mnd           # Magic number detection - too strict for initial dev
     - testpackage   # Separate test packages not always needed
 
 issues:

@@ -52,9 +52,10 @@ func main() {
 	be, err := createBackend(ctx, cfg)
 	if err != nil {
 		logger.Error("failed to create backend", "error", err)
-		os.Exit(1)
+		stop() // run before os.Exit; defers are skipped by os.Exit
+		os.Exit(1) //nolint:gocritic // exitAfterDefer: explicit stop() above
 	}
-	defer be.Close()
+	defer func() { _ = be.Close() }()
 
 	registry := worker.NewRegistry()
 	pool := worker.NewPool(be, registry, nil, worker.WithPoolLogger(logger))
@@ -73,13 +74,15 @@ func main() {
 		logger.Info("starting HTTP server", "addr", cfg.ListenAddr, "backend", cfg.Backend)
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("http server error", "error", err)
-			os.Exit(1)
+			os.Exit(1) //nolint:gocritic // exitAfterDefer: fatal from goroutine; process exit
 		}
 	}()
 
 	if err := pool.Start(ctx); err != nil {
 		logger.Error("failed to start worker pool", "error", err)
-		os.Exit(1)
+		stop()
+		_ = be.Close()
+		os.Exit(1) //nolint:gocritic // exitAfterDefer: explicit stop/Close above
 	}
 
 	<-ctx.Done()

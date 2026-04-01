@@ -1,3 +1,5 @@
+// Package config handles environment-based configuration for queuekitd.
+
 package config
 
 import (

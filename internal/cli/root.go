@@ -1,3 +1,4 @@
+// Package cli implements the queuekit command-line interface.
 package cli
 
 import (
@@ -35,8 +36,8 @@ func init() {
 	rootCmd.PersistentFlags().String("server", "", "server URL (default http://localhost:8080)")
 	rootCmd.PersistentFlags().String("api-key", "", "API key for authentication")
 
-	viper.BindPFlag("server", rootCmd.PersistentFlags().Lookup("server"))
-	viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key"))
+	_ = viper.BindPFlag("server", rootCmd.PersistentFlags().Lookup("server"))
+	_ = viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key"))
 }
 
 func initConfig() {
@@ -55,7 +56,7 @@ func initConfig() {
 
 	viper.SetEnvPrefix("QUEUEKIT")
 	viper.AutomaticEnv()
-	viper.ReadInConfig()
+	_ = viper.ReadInConfig()
 }
 
 func Execute() {

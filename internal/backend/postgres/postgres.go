@@ -1,8 +1,8 @@
+// Package postgres implements the Backend interface using PostgreSQL.
 package postgres
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -77,7 +77,7 @@ func (p *PostgresBackend) Reserve(ctx context.Context, queueName string) (*queue
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback(ctx) //nolint:errcheck // rollback after commit is a no-op
 
 	// Find and lock the next available job
 	query := `
@@ -160,7 +160,7 @@ func (p *PostgresBackend) Nack(ctx context.Context, jobID string, jobErr error, 
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback(ctx) //nolint:errcheck // rollback after commit is a no-op
 
 	// Get current job state
 	var attempts, maxAttempts int
@@ -382,23 +382,4 @@ func (p *PostgresBackend) DeleteJob(ctx context.Context, jobID string) error {
 func (p *PostgresBackend) Close() error {
 	p.pool.Close()
 	return nil
-}
-
-// Helper function to scan job payload
-func scanJob(rows pgx.Row) (*queue.Job, error) {
-	job := &queue.Job{}
-	var payloadBytes []byte
-
-	err := rows.Scan(
-		&job.ID, &job.Type, &job.Queue, &payloadBytes, &job.Status, &job.Priority,
-		&job.Attempts, &job.MaxAttempts, &job.ScheduledAt, &job.CreatedAt,
-		&job.UpdatedAt, &job.CompletedAt, &job.FailedAt, &job.LastError,
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	job.Payload = json.RawMessage(payloadBytes)
-	return job, nil
 }

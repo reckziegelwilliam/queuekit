@@ -31,7 +31,7 @@ func init() {
 	jobsCmd.Flags().String("queue", "", "queue name (required)")
 	jobsCmd.Flags().String("status", "", "filter by status")
 	jobsCmd.Flags().Int("limit", 20, "number of jobs to show")
-	jobsCmd.MarkFlagRequired("queue")
+	_ = jobsCmd.MarkFlagRequired("queue")
 
 	inspectCmd.AddCommand(queuesCmd, jobsCmd)
 	rootCmd.AddCommand(inspectCmd)
@@ -56,12 +56,12 @@ func runInspectQueues(cmd *cobra.Command, args []string) error {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "NAME\tPENDING\tRUNNING\tCOMPLETED\tFAILED\tDEAD")
+	_, _ = fmt.Fprintln(w, "NAME\tPENDING\tRUNNING\tCOMPLETED\tFAILED\tDEAD")
 	for _, q := range queues {
-		fmt.Fprintf(w, "%s\t%d\t%d\t%d\t%d\t%d\n",
+		_, _ = fmt.Fprintf(w, "%s\t%d\t%d\t%d\t%d\t%d\n",
 			q.Name, q.Size, q.ProcessingCount, q.CompletedCount, q.FailedCount, q.DeadCount)
 	}
-	w.Flush()
+	_ = w.Flush()
 	return nil
 }
 
@@ -99,7 +99,7 @@ func runInspectJobs(cmd *cobra.Command, args []string) error {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tTYPE\tSTATUS\tATTEMPTS\tCREATED\tERROR")
+	_, _ = fmt.Fprintln(w, "ID\tTYPE\tSTATUS\tATTEMPTS\tCREATED\tERROR")
 	for _, j := range jobs {
 		id := j.ID
 		if len(id) > 8 {
@@ -112,9 +112,9 @@ func runInspectJobs(cmd *cobra.Command, args []string) error {
 		if errMsg == "" {
 			errMsg = "-"
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\t%s\n",
 			id, j.Type, j.Status, j.Attempts, j.CreatedAt, errMsg)
 	}
-	w.Flush()
+	_ = w.Flush()
 	return nil
 }

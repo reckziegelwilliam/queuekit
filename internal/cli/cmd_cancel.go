@@ -26,6 +26,6 @@ func runCancel(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Println("Job cancelled.")
+	fmt.Println("Job canceled.")
 	return nil
 }

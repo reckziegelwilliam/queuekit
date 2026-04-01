@@ -52,7 +52,7 @@ func (c *Client) do(method, path string, body any) (*http.Response, error) {
 }
 
 func (c *Client) decodeOrError(resp *http.Response, v any) error {
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // best-effort cleanup
 
 	if resp.StatusCode >= 400 {
 		var errBody struct {

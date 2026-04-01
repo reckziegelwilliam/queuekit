@@ -28,7 +28,7 @@ type enqueueRequest struct {
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+	_ = json.NewEncoder(w).Encode(v)
 }
 
 func writeError(w http.ResponseWriter, status int, msg string) {
@@ -135,7 +135,7 @@ func (s *Server) handleCancelJob(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if job.Status != queue.StatusPending {
-		writeError(w, http.StatusConflict, "only pending jobs can be cancelled")
+		writeError(w, http.StatusConflict, "only pending jobs can be canceled")
 		return
 	}
 
@@ -145,7 +145,7 @@ func (s *Server) handleCancelJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"status": "cancelled"})
+	writeJSON(w, http.StatusOK, map[string]string{"status": "canceled"})
 }
 
 func (s *Server) handleDeleteJob(w http.ResponseWriter, r *http.Request) {

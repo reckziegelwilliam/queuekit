@@ -1,3 +1,5 @@
+// Package httpapi provides the REST API server and handlers.
+
 package httpapi
 
 import (
