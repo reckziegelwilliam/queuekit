@@ -1,0 +1,32 @@
+{{define "content"}}
+<h2>Job: {{slice .Job.ID 0 8}}…</h2>
+
+<div class="card">
+  <h3>Details</h3>
+  <dl class="dl">
+    <dt>ID</dt>          <dd>{{.Job.ID}}</dd>
+    <dt>Type</dt>        <dd>{{.Job.Type}}</dd>
+    <dt>Queue</dt>       <dd><a href="/dashboard/queues/{{.Job.Queue}}">{{.Job.Queue}}</a></dd>
+    <dt>Status</dt>      <dd><span class="badge badge-{{.Job.Status}}">{{.Job.Status}}</span></dd>
+    <dt>Priority</dt>    <dd>{{.Job.Priority}}</dd>
+    <dt>Attempts</dt>    <dd>{{.Job.Attempts}} / {{.Job.MaxAttempts}}</dd>
+    <dt>Scheduled</dt>   <dd>{{.Job.ScheduledAt.Format "2006-01-02 15:04:05 UTC"}}</dd>
+    <dt>Created</dt>     <dd>{{.Job.CreatedAt.Format "2006-01-02 15:04:05 UTC"}}</dd>
+    <dt>Updated</dt>     <dd>{{.Job.UpdatedAt.Format "2006-01-02 15:04:05 UTC"}}</dd>
+    {{if .Job.CompletedAt}}<dt>Completed</dt> <dd>{{.Job.CompletedAt.Format "2006-01-02 15:04:05 UTC"}}</dd>{{end}}
+    {{if .Job.FailedAt}}<dt>Failed</dt>    <dd>{{.Job.FailedAt.Format "2006-01-02 15:04:05 UTC"}}</dd>{{end}}
+    {{if .Job.LastError}}<dt>Last Error</dt> <dd>{{.Job.LastError}}</dd>{{end}}
+  </dl>
+</div>
+
+<div class="card">
+  <h3>Payload</h3>
+  <pre class="payload">{{.PayloadPretty}}</pre>
+</div>
+
+{{if or (eq .Job.Status "failed") (eq .Job.Status "dead")}}
+<form method="POST" action="/dashboard/jobs/{{.Job.ID}}/retry" style="display:inline">
+  <button type="submit" class="btn btn-primary">Retry Job</button>
+</form>
+{{end}}
+{{end}}

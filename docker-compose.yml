@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: queuekit
+      POSTGRES_PASSWORD: queuekit
+      POSTGRES_DB: queuekit
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U queuekit"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  queuekitd:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      QUEUEKIT_LISTEN_ADDR: ":8080"
+      QUEUEKIT_BACKEND: postgres
+      QUEUEKIT_POSTGRES_DSN: "postgres://queuekit:queuekit@postgres:5432/queuekit?sslmode=disable"
+      QUEUEKIT_REDIS_ADDR: "redis:6379"
+      QUEUEKIT_API_KEY: "changeme"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:

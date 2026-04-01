@@ -41,46 +41,48 @@
 - [x] Basic logging and instrumentation hooks (`log/slog`, per-event structured logs)
 - [x] Fix retry bug: backends now re-schedule non-final failures as `pending` with backoff delay
 
-## Phase 3 – HTTP API
+## Phase 3 – HTTP API ✅
 
-- [ ] Choose router (chi/echo)
-- [ ] Implement endpoints:
-  - [ ] `POST /v1/jobs` – enqueue
-  - [ ] `GET /v1/queues` – list queues
-  - [ ] `GET /v1/queues/{name}/jobs` – list jobs
-  - [ ] `POST /v1/jobs/{id}/retry`
-  - [ ] `POST /v1/jobs/{id}/cancel`
-- [ ] API key authentication
-- [ ] JSON schema & validation
-- [ ] Integration tests against Postgres/Redis backends
+- [x] Choose router (`chi/v5`)
+- [x] Implement endpoints:
+  - [x] `POST /v1/jobs` – enqueue
+  - [x] `GET /v1/queues` – list queues
+  - [x] `GET /v1/queues/{name}/jobs` – list jobs
+  - [x] `GET /v1/jobs/{id}` – get job
+  - [x] `POST /v1/jobs/{id}/retry`
+  - [x] `POST /v1/jobs/{id}/cancel`
+  - [x] `DELETE /v1/jobs/{id}` – delete job
+- [x] API key authentication (Bearer token middleware)
+- [x] JSON validation (leverages `job.Validate()`)
+- [x] Integration tests (19 tests with mock backend)
 
-## Phase 4 – Dashboard
+## Phase 4 – Dashboard ✅
 
-- [ ] Setup `html/template` with basic layout
-- [ ] Views:
-  - [ ] Queues overview (throughput, latency, failures)
-  - [ ] Queue details (jobs, statuses, pagination)
-  - [ ] Job details panel (payload, error, retry)
-  - [ ] Schedules view
-- [ ] Minimal CSS (no framework)
-- [ ] Server-side sorting/filtering (no SPA)
+- [x] Setup `html/template` with embedded layout
+- [x] Views:
+  - [x] Queues overview (counts, health scores)
+  - [x] Queue details (jobs, status filter tabs, pagination)
+  - [x] Job details panel (payload, error, retry button)
+- [x] Minimal CSS (no framework, embedded in layout)
+- [x] Server-side sorting/filtering (no SPA)
 
-## Phase 5 – CLI (`queuekit`)
+## Phase 5 – CLI (`queuekit`) ✅
 
-- [ ] Set up CLI using `cobra` or stdlib `flag`
-- [ ] Commands:
-  - [ ] `queuekit enqueue <type> --queue <name> --payload <json>`
-  - [ ] `queuekit inspect queues`
-  - [ ] `queuekit inspect jobs --queue <name>`
-  - [ ] `queuekit retry <job-id>`
-- [ ] Global config via YAML (`~/.config/queuekit/config.yaml`)
+- [x] Set up CLI using `cobra`
+- [x] Commands:
+  - [x] `queuekit enqueue <type> --queue <name> --payload <json>`
+  - [x] `queuekit inspect queues`
+  - [x] `queuekit inspect jobs --queue <name>`
+  - [x] `queuekit retry <job-id>`
+  - [x] `queuekit cancel <job-id>`
+- [x] Global config via YAML (`~/.config/queuekit/config.yaml`) with viper
 
-## Phase 6 – Packaging & Examples
+## Phase 6 – Packaging & Examples ✅
 
-- [ ] Dockerfile for `queuekitd`
-- [ ] `docker-compose.yml` with Postgres + Redis
-- [ ] Example integrations:
-  - [ ] Simple Go service using the client
-  - [ ] Cron-style recurring jobs
-- [ ] Final README polish and screenshots
+- [x] Multi-stage Dockerfile for `queuekitd` (distroless final image)
+- [x] `docker-compose.yml` with Postgres + Redis
+- [x] Example integrations:
+  - [x] Simple Go service (`examples/simple/`)
+  - [x] Cron-style recurring jobs (`examples/cron/`)
+- [x] README polish with API reference, CLI usage, architecture diagram
 
