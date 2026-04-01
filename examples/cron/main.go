@@ -1,3 +1,4 @@
+// Command cron demonstrates recurring job scheduling with QueueKit.
 package main
 
 import (
@@ -31,7 +32,7 @@ func main() {
 		logger.Error("failed to connect", "error", err)
 		os.Exit(1)
 	}
-	defer be.Close()
+	defer func() { _ = be.Close() }()
 
 	registry := worker.NewRegistry()
 	registry.Register("cleanup", func(ctx context.Context, job *queue.Job) error {

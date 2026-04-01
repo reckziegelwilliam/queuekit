@@ -1,3 +1,4 @@
+// Package httpapi_test contains integration tests for the HTTP API handlers.
 package httpapi_test
 
 import (
@@ -126,7 +127,7 @@ func (m *mockBackend) ListQueues(_ context.Context) ([]queue.Queue, error) {
 func (m *mockBackend) ListJobs(_ context.Context, queueName, status string, limit, offset int) ([]*queue.Job, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	var result []*queue.Job
+	result := make([]*queue.Job, 0, len(m.jobs))
 	for _, j := range m.jobs {
 		if queueName != "" && j.Queue != queueName {
 			continue

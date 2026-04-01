@@ -1,3 +1,4 @@
+// Command queuekitd runs the QueueKit server and worker pool.
 package main
 
 import (
@@ -52,7 +53,7 @@ func main() {
 	be, err := createBackend(ctx, cfg)
 	if err != nil {
 		logger.Error("failed to create backend", "error", err)
-		stop() // run before os.Exit; defers are skipped by os.Exit
+		stop()     // run before os.Exit; defers are skipped by os.Exit
 		os.Exit(1) //nolint:gocritic // exitAfterDefer: explicit stop() above
 	}
 	defer func() { _ = be.Close() }()

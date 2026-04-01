@@ -1,5 +1,4 @@
 // Package dashboard provides server-rendered HTML views for queue management.
-
 package dashboard
 
 import (

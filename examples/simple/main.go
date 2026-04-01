@@ -1,3 +1,4 @@
+// Command simple demonstrates basic QueueKit usage with a worker pool.
 package main
 
 import (
@@ -30,7 +31,7 @@ func main() {
 		logger.Error("failed to connect", "error", err)
 		os.Exit(1)
 	}
-	defer be.Close()
+	defer func() { _ = be.Close() }()
 
 	if err := postgres.RunMigrations(ctx, nil); err != nil {
 		logger.Warn("migration skipped (run manually)", "error", err)
